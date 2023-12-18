@@ -14,7 +14,8 @@ AGGRO_MODE				= 1		-- 0 = Passive, 1 = Agressive
 MAX_AGGRO_RANGE			= 10		-- Max range where to find monsters while standing
 IDLE_HEAL_THRESHOLD		= 70	-- % of Owner / Kimi HP when to spam Heal out of combat
 COMBAT_HEAL_THRESHOLD	= 40	-- % of Owner / Kimi HP when to spam Heal during combat
-AUTO_WARM_DEF			= 1		-- 0 = Disabled, 1 = Enabled
+AUTO_WARM_DEF			= 0		-- 0 = Disabled, 1 = Enabled
+AOE_DISTANCE			= 6		-- Number of cell radius before Homun Casts Illusion of Light
 
 
 
@@ -1061,6 +1062,38 @@ function CircleAroundTarget(TrgID)
 
 end
 
+-------------------------------------------------
+function CountEnemiesWithinRadius(radius)
+-------------------------------------------------
+	local enemies = GetActors()
+	local numEnemies = 0
+	local homunX, homunY = GetV(V_POSITION, MyID)
+
+	for _, enemyID in pairs(enemies) do
+		
+		-- -- Print Actor type
+		-- local actorType = GetV(V_TYPE, enemyID)
+		-- TraceAI("Actor type for enemy " .. enemyID .. ": " .. actorType)
+
+		if enemyID ~= MyID then
+			if IsMonster(enemyID) == 1 then
+				local enemyX, enemyY = GetV(V_POSITION, enemyID)
+				local distance = GetDistance(homunX, homunY, enemyX, enemyY)
+
+				TraceAI("Distance to enemy " .. enemyID .. ": " .. distance)
+
+				if distance <= radius then
+					numEnemies = numEnemies + 1
+					TraceAI("Enemy " .. enemyID .. " is within radius")
+				end
+			end
+		end
+	end
+
+	TraceAI("Num enemies within radius: " .. numEnemies)
+	return numEnemies
+end
+
 
 
 --------------------------------------------------
@@ -1109,16 +1142,30 @@ end
 function SetSkill()
 
 	-- Todo -> GetSkill level
-
-	if KimiID == KIMI_OCCULT then 
-		MySkill = S_ILLUSION_OF_BREATH
+	local enemies = GetActors()
+	--CHANGES HERE FOR AOE--
+	local numEnemies = CountEnemiesWithinRadius(AOE_DISTANCE)
+	local withinRadius = numEnemies > 1
+	--CHANGES HERE FOR AOE--
+	TraceAI("SetSkill - numEnemies: " .. numEnemies .. ", withinRadius: " .. (tostring(withinRadius) or "nil"))
+	if withinRadius then
+		MySkill = S_ILLUSION_OF_LIGHT
 		MySkillLevel = 10
-	else -- All other Kimis
-		MySkill = S_ILLUSION_OF_CLAWS
-		MySkillLevel = 5
+	else
+	--END CHANGES FOR TESTING--
+		if KimiID == KIMI_OCCULT then 
+			MySkill = S_ILLUSION_OF_BREATH
+			MySkillLevel = 10
+		else -- All other Kimis
+			MySkill = S_ILLUSION_OF_CLAWS
+			MySkillLevel = 5
+		end
 	end
-
+	-- Trace for debugging--
+	TraceAI("SetSkill - numEnemies: " .. numEnemies .. ", withinRadius: " .. (tostring(withinRadius) or "nil") .. ", Selected Skill: " .. MySkill)
 end
+
+---------------------------------------
 
 
 
